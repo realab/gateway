@@ -2,34 +2,34 @@ package server
 
 import (
 	"context"
-	"net"
 	"net/http"
 	"time"
 
 	"github.com/go-kratos/kratos/v2/log"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
+	"github.com/valyala/fasthttp"
+	"github.com/valyala/fasthttp/fasthttpadaptor"
 )
 
 // Server is a gateway server.
 type Server struct {
-	*http.Server
+	*fasthttp.Server
 
-	log *log.Helper
+	log  *log.Helper
+	addr string
 }
 
 // New new a gateway server.
 func New(logger log.Logger, handler http.Handler, addr string, timeout time.Duration, idleTimeout time.Duration) *Server {
+
 	srv := &Server{
-		Server: &http.Server{
-			Addr: addr,
-			Handler: h2c.NewHandler(handler, &http2.Server{
-				IdleTimeout: idleTimeout,
-			}),
-			ReadTimeout:       timeout,
-			ReadHeaderTimeout: timeout,
-			WriteTimeout:      timeout,
-			IdleTimeout:       idleTimeout,
+		addr: addr,
+		Server: &fasthttp.Server{
+			// Addr: addr,
+			Handler:     fasthttpadaptor.NewFastHTTPHandler(handler),
+			ReadTimeout: timeout,
+			// ReadHeaderTimeout: timeout,
+			WriteTimeout: timeout,
+			IdleTimeout:  idleTimeout,
 		},
 		log: log.NewHelper(logger),
 	}
@@ -38,15 +38,16 @@ func New(logger log.Logger, handler http.Handler, addr string, timeout time.Dura
 
 // Start start the server.
 func (s *Server) Start(ctx context.Context) error {
-	s.log.Infof("server listening on %s", s.Addr)
-	s.BaseContext = func(net.Listener) context.Context {
-		return ctx
-	}
-	return s.ListenAndServe()
+	s.log.Infof("server listening on %s", s.addr)
+	// s.BaseContext = func(net.Listener) context.Context {
+	// 	return ctx
+	// }
+
+	return s.ListenAndServe(s.addr)
 }
 
 // Stop stop the server.
 func (s *Server) Stop(ctx context.Context) error {
 	s.log.Info("server stopping")
-	return s.Shutdown(ctx)
+	return s.Shutdown()
 }
