@@ -8,6 +8,8 @@ import (
 	"github.com/go-kratos/kratos/v2/log"
 	"github.com/valyala/fasthttp"
 	"github.com/valyala/fasthttp/fasthttpadaptor"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 // Server is a gateway server.
@@ -25,7 +27,9 @@ func New(logger log.Logger, handler http.Handler, addr string, timeout time.Dura
 		addr: addr,
 		Server: &fasthttp.Server{
 			// Addr: addr,
-			Handler:     fasthttpadaptor.NewFastHTTPHandler(handler),
+			Handler: fasthttpadaptor.NewFastHTTPHandler(h2c.NewHandler(handler, &http2.Server{
+				IdleTimeout: idleTimeout,
+			})),
 			ReadTimeout: timeout,
 			// ReadHeaderTimeout: timeout,
 			WriteTimeout: timeout,
